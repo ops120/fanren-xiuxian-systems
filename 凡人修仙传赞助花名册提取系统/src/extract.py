@@ -8,21 +8,19 @@ Phase B: parallel per-sample det + batch rec (ProcessPoolExecutor).
 Phase C: merge, (col,g) dedup, tier assignment by g, CSV outputs.
 
 Usage:
-  python extract.py smoke    # 9 samples end-to-end
-  python extract.py full     # all samples (background recommended)
+  python extract.py smoke --video path/to/XX.mp4   # 9 samples end-to-end (~3 min)
+  python extract.py full  --video path/to/XX.mp4   # full run (~25 min, 6 workers)
 """
 import os, sys, json, csv, subprocess, time
 import numpy as np
 import cv2
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
-VID = r'G:\Downloads\202609\哔哩哔哩视频\慕兰之战17.mp4'   # input video (edit here)
+VID = os.environ.get('FR_VIDEO', r'G:\Downloads\202609\哔哩哔哩视频\慕兰之战17.mp4')   # input video (--video overrides)
 _SRC = os.path.dirname(os.path.abspath(__file__))
 PROJ = os.path.dirname(_SRC)                                  # repo root (derived)
-WORK = os.path.join(os.environ.get('TEMP', r'C:\Temp'), 'fanren_probe', 'full')  # scratch dir
-OUT = os.path.join(PROJ, 'output')
-os.makedirs(OUT, exist_ok=True)
-os.makedirs(os.path.join(WORK, 'entries'), exist_ok=True)
+WORK = os.environ.get('FR_WORK', os.path.join(os.environ.get('TEMP', r'C:\Temp'), 'fanren_probe', 'full'))  # scratch dir (--work overrides)
+OUT = os.environ.get('FR_OUT', os.path.join(PROJ, 'output'))
 
 H, W = 1080, 1920
 PITCH, PHASE = 30.80, 6.00
@@ -319,9 +317,28 @@ def phase_c(locked):
               open(os.path.join(OUT, 'full_run.json'), 'w', encoding='utf-8'), ensure_ascii=False)
 
 def main():
-    mode = sys.argv[1] if len(sys.argv) > 1 else 'smoke'
+    import argparse
+    ap = argparse.ArgumentParser(prog='extract.py', description='凡人修仙传赞助花名册提取系统 — 视频滚动赞助名单提取')
+    ap.add_argument('mode', choices=['smoke', 'full'],
+                    help='smoke=9采样帧自测(约3分钟) / full=全量提取(约25分钟)')
+    ap.add_argument('--video', metavar='PATH', help='输入视频路径(默认用源码顶部 VID 常量)')
+    ap.add_argument('--out', metavar='DIR', help='输出目录(默认 output/)')
+    ap.add_argument('--work', metavar='DIR', help='中间产物目录: 采样帧/相位表缓存(默认系统TEMP)')
+    args = ap.parse_args()
+    global VID, WORK, OUT
+    if args.video: VID = args.video
+    if args.out: OUT = args.out
+    if args.work:
+        WORK = args.work
+        os.environ['FR_WORK'] = args.work       # propagate to worker processes
+    os.makedirs(OUT, exist_ok=True)
+    os.makedirs(os.path.join(WORK, 'entries'), exist_ok=True)
+    if not os.path.exists(VID):
+        print('ERROR: video not found: %s' % VID)
+        sys.exit(2)
+    print('mode=%s | video=%s | out=%s | work=%s' % (args.mode, VID, OUT, WORK), flush=True)
     nworkers = 6
-    if mode == 'smoke':
+    if args.mode == 'smoke':
         times = [1200.00] + BACK[:4] + FWD[:4]
     else:
         times = [1200.00] + BACK + FWD

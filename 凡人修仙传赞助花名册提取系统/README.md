@@ -42,19 +42,44 @@
 
 ![网格标注](samples/test5_f460.png)
 
-## 一键启动
+## 使用方式（从视频到名单）
+
+以从 `XX.mp4` 提取为例（本仓库实测视频为 慕兰之战17.mp4）：
 
 ```bash
+# 1) 安装依赖（另需 ffmpeg 已装并在 PATH 中）
 pip install -r requirements.txt
 
-# 冒烟自测：9 个采样帧端到端（约 3 分钟）
-python src/extract.py smoke
+# 2) 自测：抽 9 个采样帧跑通全流程（约 3 分钟），先确认环境与视频可用
+python src/extract.py smoke --video "D:\videos\XX.mp4"
 
-# 全量提取：145 个采样帧（约 25 分钟，6 进程并行）
-python src/extract.py full
+# 3) 全量提取：145 个采样帧，约 25 分钟（6 进程并行）
+python src/extract.py full --video "D:\videos\XX.mp4"
+
+# 4) 取结果（output/ 目录）
+#    names.csv           → 名单，Excel 直接打开筛选
+#    pending_review.csv  → 低置信复核清单（带 score）
+#    tiers.csv           → 档位抬头时间轴
 ```
 
-输入视频路径在 `src/extract.py` 顶部 `VID` 常量配置；中间产物（采样帧、相位表）缓存在系统 TEMP，可反复重跑。
+命令参数：
+
+| 参数 | 说明 |
+|---|---|
+| `mode` | `smoke`=9 帧自测 / `full`=全量提取 |
+| `--video` | 输入视频路径（不传则用源码顶部 `VID` 常量） |
+| `--out` | 输出目录（默认 `output/`） |
+| `--work` | 中间产物目录：采样帧/相位表缓存（默认系统 TEMP，可反复重跑） |
+
+提取出的 `names.csv` 长这样（4 列，阅读顺序）：
+
+| 当前秒 | 当前帧 | 抬头 | 用户名 |
+|---|---|---|---|
+| 00:19:41.60 | 29540 | 落云宗太上长老 | 雁过也 |
+| 00:19:41.60 | 29540 | 落云宗太上长老 | idiotshit |
+| 00:19:41.60 | 29540 | 落云宗太上长老 | vege1984 |
+
+> ⚠️ 采样区间（00:19:39→00:28:20）与几何参数（行距 30.8px、速度 ~260px/s）均按实测视频标定；换用其他视频需先重新标定采样区间与几何参数（见 `src/extract.py` 顶部常量区）。
 
 ## 目录结构
 
