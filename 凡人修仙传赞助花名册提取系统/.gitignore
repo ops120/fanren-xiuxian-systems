@@ -1,0 +1,15 @@
+# 缓存与临时文件
+__pycache__/
+*.py[cod]
+*.log
+.work/
+
+# 可再生的中间产物（由 extract.py full 重新生成）
+output/full_run.json
+
+# 文档目录（不纳入版本库、不对外展示）
+.docs/
+
+# 系统
+.DS_Store
+Thumbs.db

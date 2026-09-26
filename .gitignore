@@ -1,0 +1,9 @@
+# 缓存与临时文件
+__pycache__/
+*.py[cod]
+*.log
+.work/
+
+# 系统
+.DS_Store
+Thumbs.db
