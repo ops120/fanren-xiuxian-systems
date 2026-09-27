@@ -68,6 +68,7 @@ python src/extract.py full --video "D:\videos\XX.mp4"
 |---|---|
 | `mode` | `smoke`=9 帧自测 / `full`=全量提取 |
 | `--video` | 输入视频路径（不传则用源码顶部 `VID` 常量） |
+| `--config` | 视频配置 JSON：整套几何/采样参数（pitch/phase/v/anchor/back/fwd/lefts/colw/tier0），示例见 `configs/` |
 | `--out` | 输出目录（默认 `output/`） |
 | `--work` | 中间产物目录：采样帧/相位表缓存（默认系统 TEMP，可反复重跑） |
 
@@ -79,7 +80,7 @@ python src/extract.py full --video "D:\videos\XX.mp4"
 | 00:19:41.60 | 29540 | 落云宗太上长老 | idiotshit |
 | 00:19:41.60 | 29540 | 落云宗太上长老 | vege1984 |
 
-> ⚠️ 采样区间（00:19:39→00:28:20）与几何参数（行距 30.8px、速度 ~260px/s）均按实测视频标定；换用其他视频需先重新标定采样区间与几何参数（见 `src/extract.py` 顶部常量区）。
+> ⚠️ 采样区间与几何参数（行距/速度/列布局/采样步长）**每个视频都不同，必须逐一标定**——实测两部同系列视频速度差 37%（260 vs 357 px/s）、行距不同、列位不同。标定后写成 config JSON 传入 `--config`（示例：`configs/重返天南18.json`）；未传 config 时使用默认参数（对应 慕兰之战17）。
 
 ## 目录结构
 

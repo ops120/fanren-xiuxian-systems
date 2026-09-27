@@ -23,14 +23,18 @@ WORK = os.environ.get('FR_WORK', os.path.join(os.environ.get('TEMP', r'C:\Temp')
 OUT = os.environ.get('FR_OUT', os.path.join(PROJ, 'output'))
 
 H, W = 1080, 1920
-PITCH, PHASE = 30.80, 6.00
-V = 259.6207 / 25.0                 # px per frame; anchor t=1200.00 dy=0
-F_ANCHOR = 30000
-LEFTS = [4, 241, 459, 639, 809, 1165, 1404, 1648]
-COLW = 230
-TIER0 = '落云宗太上长老'
-BACK = [1196.32, 1192.64, 1188.96, 1185.28, 1181.60, 1179.68]
-FWD = [round(1203.68 + 3.68 * k, 2) for k in range(137)]      # ..1704.16
+def _env_f(name, default):
+    try: return float(os.environ[name])
+    except (KeyError, ValueError): return float(default)
+PITCH = _env_f('FR_PITCH', 30.80)
+PHASE = _env_f('FR_PHASE', 6.00)
+V = _env_f('FR_V', 259.6207 / 25.0)           # px per frame; anchor t=1200.00 dy=0
+F_ANCHOR = int(_env_f('FR_ANCHOR', 30000))
+LEFTS = json.loads(os.environ.get('FR_LEFTS', '[4, 241, 459, 639, 809, 1165, 1404, 1648]'))
+COLW = int(_env_f('FR_COLW', 230))
+TIER0 = os.environ.get('FR_TIER0', '落云宗太上长老')
+BACK = json.loads(os.environ.get('FR_BACK', '[1196.32, 1192.64, 1188.96, 1185.28, 1181.60, 1179.68]'))
+FWD = json.loads(os.environ.get('FR_FWD', 'null')) or [round(1203.68 + 3.68 * k, 2) for k in range(137)]
 
 def S_of(f_abs): return V * (f_abs - F_ANCHOR)
 def y_of(f_abs, g, dy=0.0): return PHASE + PITCH * g - S_of(f_abs) + dy
@@ -185,8 +189,8 @@ def worker_task(f_abs):
     for b in nboxes:
         x0, y0 = b[0]; x1, y1 = b[2]
         h = y1 - y0
-        col = int(np.clip(np.searchsorted(LEFTS, x0 + 1) - 1, 0, 7))
-        xa = int(max(x0 - 2, LEFTS[col] - 2)); xb = int(min(x1 + 2, LEFTS[col] + COLW + 2))
+        col = int(np.argmin([abs(x0 - L) for L in LEFTS]))   # nearest column left (jitter-tolerant)
+        xa = int(max(x0 - 2, LEFTS[col] - 40)); xb = int(min(x1 + 2, LEFTS[col] + COLW + 40))
         if xb - xa < 24: continue
         yc_box = (y0 + y1) / 2.0
         gf = g_at(f_abs, yc_box, dy)
@@ -324,7 +328,18 @@ def main():
     ap.add_argument('--video', metavar='PATH', help='输入视频路径(默认用源码顶部 VID 常量)')
     ap.add_argument('--out', metavar='DIR', help='输出目录(默认 output/)')
     ap.add_argument('--work', metavar='DIR', help='中间产物目录: 采样帧/相位表缓存(默认系统TEMP)')
+    ap.add_argument('--config', metavar='JSON', help='视频配置JSON: {video,pitch,phase,v,anchor,back,fwd,tier0,lefts,colw,work,out}')
     args = ap.parse_args()
+    if args.config:
+        _CK = dict(video='VID', pitch='PITCH', phase='PHASE', v='V', anchor='F_ANCHOR',
+                   back='BACK', fwd='FWD', tier0='TIER0', lefts='LEFTS', colw='COLW',
+                   work='WORK', out='OUT')
+        cfg = json.load(open(args.config, encoding='utf-8'))
+        for kk, val in cfg.items():
+            kk = kk.lower()
+            if kk in _CK:
+                os.environ['FR_' + kk.upper()] = val if isinstance(val, str) else json.dumps(val)
+                globals()[_CK[kk]] = val
     global VID, WORK, OUT
     if args.video: VID = args.video
     if args.out: OUT = args.out
