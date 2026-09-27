@@ -265,11 +265,13 @@ def phase_c(locked):
     def norm(s): return ''.join(s.split())
     keep = {}
     for (col, g), e in sorted(best.items(), key=lambda kv: (kv[0][0], kv[0][1])):
-        k2 = (col, norm(e['name']))
+        k2 = norm(e['name'])                      # O(n): candidates are already-processed neighbours only
         dup = False
-        for (c2, g2) in list(keep):
-            if c2 == col and abs(g2 - g) <= 2 and norm(keep[(c2, g2)]['name']) == k2[1] and k2[1]:
-                dup = True; break
+        if k2:
+            for dg in (1, 2):
+                pv = keep.get((col, g - dg))
+                if pv is not None and norm(pv['name']) == k2:
+                    dup = True; break
         if not dup: keep[(col, g)] = e
     import re as _re
     inv = _re.compile(r'[​-‏﻿\s]')
@@ -277,9 +279,10 @@ def phase_c(locked):
     # titles: merge same-text within |dg|<=3 (same title seen at consecutive samples)
     tbest = []
     for t in sorted(titles, key=lambda t: t['f']):
-        if not t['text'].strip(): continue
-        if any(abs(u['g'] - t['g']) <= 3 and u['text'].strip() == t['text'].strip() for u in tbest):
-            continue
+        k = t['text'].strip()
+        if not k: continue
+        if any(u['text'].strip() == k and abs(u['f'] - t['f']) <= 750 for u in tbest):
+            continue                      # same title re-detected within 30s -> same appearance
         tbest.append(t)
     tiers = sorted(tbest, key=lambda t: t['g'])
     # tier assignment by g
